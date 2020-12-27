@@ -38,12 +38,12 @@ Agent 会加载 3个位置的插件：
 
 插件加载后，Agent 会决定是否要激活它。激活插件会触发获取插件配置的尝试，该配置存储在服务器上。 Agent 还会确认插件已启用。确认可用时，插件将被运行。
 
-插件激活最重要的因素是 进程快照 [process snapshot](Process_snapshot.md) 。这个数据结构包含了操作系统中公认的那些重要进程的信息。如果探测到 一个 process snapshot 与 一个 plugin.json 有匹配的话 ，这个插件就变成 活跃状态 。大多数情况下，是通过 探测到指定类型的进程来得到的。因此，如果进程快照中的数据消失，则该插件将变成 不活跃状态。
+插件激活最重要的因素是 进程快照 [process snapshot](Process_snapshot.md) 。这个数据结构包含了操作系统中感知到的重要进程信息。如果探测到 一个 process snapshot 与 一个 plugin.json 有匹配的话 ，这个插件就变成 活跃状态 。大多数情况下，是通过 探测到指定类型的进程来激活的。因此，如果进程快照中的数据消失，则该插件将变成 不活跃状态。
 
 当前提供3种类型的激活：
 
-- 检测到单个触发过程时，运行单个插件实例
-- 检测到被监控的进程组是，运行与进程组中进程个数相同的插件实例
+- 检测到相应的进程时，运行一个单例的插件实例
+- 检测到相应的进程时，运行与进程个数相同的插件实例
 - 持久运行插件
 
 说了这么多，现在我们来看看具体的激活原理：
@@ -102,11 +102,9 @@ Agent 会加载 3个位置的插件：
  )
 ```
 
-这个快照包含了2个进程组，一个是 python类型，跑的是 `plugin_sdk.demo_app`， 另一个是 ruby类型，跑的是
+这个快照包含了2个进程组，一个是 python类型，跑的是 `plugin_sdk.demo_app` ; 另一个是 ruby类型，跑的是 `puppet` 。
 
-`puppet` 。
-
-对于这个插件，不管创建多少个python进程，都只会创建一个插件实例。这说明如果一个进程类型是通用的（比如 Python, Java, Ruby）, 你需要深入到 快照中包含的进程，检查是否是你要监控的。
+对于这个插件，不管创建多少个python进程，都只会创建一个插件实例。这也意味着 如果一个进程类型是通用的（比如 Python, Java, Ruby）, 你需要深入到 快照中包含的进程，检查是否是你要监控的。
 
 ### 为给定类型的每个进程组激活一个插件
 
@@ -115,7 +113,7 @@ Agent 会加载 3个位置的插件：
 - 这种方式，你不需要考虑深入到进程快照内来确保你想监控的进程是在运行的。
 - 另一方面，如果你的插件需要配置，而同时有多个进程组实例在运行，你不能使用 Server来提供配置(因为这样，每个插件的配置都会是一样的)。
 
-MMSQL 插件是这种方式的一个合适的场景，这个插件不需要额外的配置，并且其plugin.json文件仅作了简单声明：
+MMSQL 插件就是这种应用场景，这个插件不需要额外的配置，其plugin.json文件仅需要作简单声明：
 
 ```json
 {
@@ -156,11 +154,11 @@ MMSQL 插件是这种方式的一个合适的场景，这个插件不需要额�
  )
 ```
 
-这种情况下将创建2个插件实例，因为存在2个进程是属于Python类型的（这里指的是MSSQL实例）。
+这种情况下将创建2个插件实例，因为存在2个进程，技术类型（Technologies）是 MSSQL。
 
 ### 仅当进程名与模式匹配时才激活
 
-有些情况下，针对每个进程类型的激活粒度太大时，你可以指定额外的规则来决定何时应该运行插件。这种方式，你的 `plugin.json` 文件应该包含这样的声明:
+有些情况下，针对每个进程类型的激活粒度太大时，你可以指定额外的规则来决定何时应该运行插件。这种方式你的 `plugin.json` 文件应该包含这样的声明:
 
 ```json
  {
@@ -172,9 +170,9 @@ MMSQL 插件是这种方式的一个合适的场景，这个插件不需要额�
  }
 ```
 
-这种情况下，只有检测到进程名匹配这种样式时，才会激活这个插件。匹配是通过python的正则表达函数 [re.search function](https://docs.python.org/3.6/library/re.html#re.search) 来实现的。这两种激活方式之间的区别在于，第一种激活方式是为每个符合匹配条件的进程创建一个插件实例；第二种激活模式最多创建1个插件实例。
+这种情况下，只有检测到进程名匹配这种样式时，才会激活这个插件。匹配是通过python的正则表达函数 [re.search function](https://docs.python.org/3.6/library/re.html#re.search) 来实现的。
 
-### 保持插件一直处于活跃状态
+### 保持插件一直处于活跃状态（不建议使用）
 
 最后一种激活方式是保持插件持续活跃，需要如下的配置来声明：
 
@@ -197,16 +195,16 @@ MMSQL 插件是这种方式的一个合适的场景，这个插件不需要额�
 - 检查agent日志，确定你的插件是否激活。Refer to the Auditing logs section of [troubleshooting guide](Troubleshooting.md).
 - 确认被监控进程有在运行
 - 确保要监视的进程是相关的（确认该进程已在UI中的相应“主机”页面上列出）。
-- 使用Plugin SDK example中的  `demo_oneagent_plugin_snapshot` 插件来获取 有关所有可用于激活的发现的进程，实体ID和进程名称的信息。
+- 使用Plugin SDK example中的  `demo_oneagent_plugin_snapshot` 插件来获取所有感知到的进程的信息，包括 实体ID和进程名称 等 可能用于插件激活的信息。
   - 将插件部署到运行相应组件的机器上，就可以在插件代理日志文件中获得流程快照信息。
-  - 插件激活信息还将作为 `Extension technology`显示在每个进程的 `Properties` 部分的UI上。  
-  - `Python plugin activation technologies`可以用作 plugin.json 中的 `technologies` 属性，而`Python Activation_name_pattern` 可以用作plugin.json的 `source` 中的 `activation_name_pattern`
+  - 插件激活信息还将作为 `Extension technology`显示在UI上，在每个进程的 `Properties` 页 。  
+  - `Python plugin activation technologies`可以用来匹配 `plugin.json` 中的 `technologies` ，而`Python Activation_name_pattern` 可以用来匹配 `plugin.json` 中的 `source.activation_name_pattern`  。
 
 
 
 ## Running plugins
 
-一旦 active 插件 接收到所需的配置时，就可以进行工作了。大多数简单场景中，插件的 `query` 方法 每分钟执行一次；不过有一些规则需要遵循：
+一旦 active 插件 接收到所需的配置时，就可以随时准备运行了。大多数简单场景中，插件的 `query` 方法 每分钟执行一次；不过有一些规则需要遵循：
 
 **Agent 会试图限制 已创建插件实例的数量**。 也就是说，只要插件正常工作（其方法不会引发任何异常），并且其配置没有更改，则所有调用都将在同一实例对象上进行。如果您想在插件中保持某些状态，可以通过重写 `initialize()` 方法轻松实现。
 
