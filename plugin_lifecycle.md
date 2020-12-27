@@ -64,7 +64,7 @@ Agent 会加载 3个位置的插件：
 
 根据 plugin.json中的上诉声明，快照中任意 python 进程组的实例都会激活这个插件。就像下面的这个 snapshot:
 
-```json
+```python
  ProcessSnapshot(
      host_id=11711730974707348096,
      entries=[
@@ -124,7 +124,7 @@ MMSQL 插件就是这种应用场景，这个插件不需要额外的配置，�
 
 相应的进程快照如下所示：
 
-```json
+```python
  ProcessSnapshot(host_id=16649240629743570171, entries=[
      ProcessSnapshotEntry(
          group_id=4337044249244370985,
